@@ -1,0 +1,12 @@
+{
+	"authors": [
+		"Samathy Barratt"
+	],
+	"copyright": "Copyright © 2020, Samathy Barratt",
+	"dependencies": {
+		"vibe-d": "~>0.8.6"
+	},
+	"description": "Simple Script Server",
+	"license": "MIT",
+	"name": "lambbaa"
+}
