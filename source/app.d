@@ -9,7 +9,6 @@ import vibe.http.router;
 import vibe.core.core : runApplication;
 import std.stdio;
 
-
 immutable scriptDirectory = "scripts";
 
 //XXX
@@ -27,7 +26,6 @@ string stringArrayToString(string[] input)
     return output;
 }
 
-
 string[string] getScripts(string directory)
 {
     //TODO scriptname should be the name of the script minus file extensions.
@@ -37,14 +35,14 @@ string[string] getScripts(string directory)
     //when requested.
     string[string] scripts;
 
-    foreach(string file; dirEntries(directory, SpanMode.breadth))
+    foreach (string file; dirEntries(directory, SpanMode.breadth))
     {
         if (isFile(file))
         {
-            scripts[file.split("/")[$-1]] = file;
+            scripts[file.split("/")[$ - 1]] = file;
             continue;
         }
-        else if(isDir(file))
+        else if (isDir(file))
         {
             auto scriptsInDirectory = getScripts(file);
 
@@ -66,9 +64,7 @@ string findScriptPath(string scriptname)
     return getScripts(scriptDirectory)[scriptname];
 }
 
-
-
-void handler ( scope HTTPServerRequest req, scope HTTPServerResponse res)
+void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
 
     //TODO switch writelns to debugs
@@ -76,13 +72,14 @@ void handler ( scope HTTPServerRequest req, scope HTTPServerResponse res)
     auto scriptname = req.requestPath.toString()[1 .. $];
 
     writeln("Running ", scriptname);
-    
+
     auto scriptPath = findScriptPath(scriptname);
 
     //This should handle the exception when a file is not marked executable, with a 404 response.
     // std.process.ProcessException@std/process.d(375): Not an executable file: scripts/not_executable
-    auto pipes = pipeProcess(scriptPath, Redirect.stdin | Redirect.stdout | Redirect.stderr );
-    scope(exit) wait(pipes.pid);
+    auto pipes = pipeProcess(scriptPath, Redirect.stdin | Redirect.stdout | Redirect.stderr);
+    scope (exit)
+        wait(pipes.pid);
 
     /* Script input should be optionally cached, checked against previous inputs, 
       and the expected output given if matches found. */
@@ -95,10 +92,12 @@ void handler ( scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     //These two might be broken atm, they only seem to be storing the first line of output.
     string[] output;
-    foreach(line; pipes.stdout.byLine) output ~= line.idup;
+    foreach (line; pipes.stdout.byLine)
+        output ~= line.idup;
 
     string[] err;
-    foreach(line; pipes.stdout.byLine) output ~= line.idup;
+    foreach (line; pipes.stdout.byLine)
+        output ~= line.idup;
 
     string singleOutput = stringArrayToString(output);
     string singleError = stringArrayToString(err);
@@ -106,9 +105,9 @@ void handler ( scope HTTPServerRequest req, scope HTTPServerResponse res)
     writeln(output);
     writeln(singleOutput);
 
-
     //TODO this should be using a json object, rather than handcoded json.
-    res.writeBody("{\"output\":\"" ~ singleOutput ~ "\", \"error\":\""~ singleError ~"\"}", "application/json"); 
+    res.writeBody("{\"output\":\"" ~ singleOutput ~ "\", \"error\":\"" ~ singleError ~ "\"}",
+            "application/json");
     return;
 }
 
