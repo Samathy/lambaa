@@ -1,26 +1,115 @@
 import std.stdio;
-import std.file : dirEntries, isDir;
+import std.file : dirEntries, isDir, isFile, SpanMode;
 import std.algorithm : sort;
 import std.string : split;
+import std.process : pipeProcess, Redirect, wait;
 import vibe.http.server;
 import vibe.http.fileserver;
 import vibe.http.router;
 import vibe.core.core : runApplication;
 import std.stdio;
 
+
+immutable scriptDirectory = "scripts";
+
+//XXX
+//There must be a built in way of doing this?!
+//This could be a templated function.
+string stringArrayToString(string[] input)
+{
+    string output;
+
+    foreach (string sIn; input)
+    {
+        output ~= sIn;
+    }
+
+    return output;
+}
+
+
+string[string] getScripts(string directory)
+{
+    //TODO scriptname should be the name of the script minus file extensions.
+
+    //The list of scripts should be optionally cached
+    //and only updated if a script name is not found
+    //when requested.
+    string[string] scripts;
+
+    foreach(string file; dirEntries(directory, SpanMode.breadth))
+    {
+        if (isFile(file))
+        {
+            scripts[file.split("/")[$-1]] = file;
+            continue;
+        }
+        else if(isDir(file))
+        {
+            auto scriptsInDirectory = getScripts(file);
+
+            foreach (string scriptname; scriptsInDirectory)
+            {
+                scripts[scriptname] = scriptsInDirectory[scriptname];
+            }
+            continue;
+        }
+
+    }
+
+    return scripts;
+
+}
+
+string findScriptPath(string scriptname)
+{
+    return getScripts(scriptDirectory)[scriptname];
+}
+
+
+
 void handler ( scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
+
+    //TODO switch writelns to debugs
 
     auto scriptname = req.requestPath.toString()[1 .. $];
 
     writeln("Running ", scriptname);
+    
+    auto scriptPath = findScriptPath(scriptname);
 
-    //get script name from request
-    //Search for script by name
-    //Potential caching here.
-    //run script
-    //return stdout from script
+    //This should handle the exception when a file is not marked executable, with a 404 response.
+    // std.process.ProcessException@std/process.d(375): Not an executable file: scripts/not_executable
+    auto pipes = pipeProcess(scriptPath, Redirect.stdin | Redirect.stdout | Redirect.stderr );
+    scope(exit) wait(pipes.pid);
 
+    /* Script input should be optionally cached, checked against previous inputs, 
+      and the expected output given if matches found. */
+    /* We should pass the input to the script in an expected form. Json, perhaps. */
+    if (req.method.POST)
+    {
+        writeln(req.queryString); // This gives us query variables, which should be passed in.
+        pipes.stdin.write(req.queryString);
+    }
+
+    //These two might be broken atm, they only seem to be storing the first line of output.
+    string[] output;
+    foreach(line; pipes.stdout.byLine) output ~= line.idup;
+
+    string[] err;
+    foreach(line; pipes.stdout.byLine) output ~= line.idup;
+
+    string singleOutput = stringArrayToString(output);
+    string singleError = stringArrayToString(err);
+
+    writeln(output);
+    writeln(singleOutput);
+
+
+    //TODO this should be using a json object, rather than handcoded json.
+    res.writeBody("{\"output\":\"" ~ singleOutput ~ "\", \"error\":\""~ singleError ~"\"}", "application/json"); 
+    return;
 }
 
 int main()
