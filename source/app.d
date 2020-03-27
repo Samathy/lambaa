@@ -1,5 +1,5 @@
 import std.stdio;
-import std.file : dirEntries, isDir, isFile, SpanMode;
+import std.file : dirEntries, isDir, isFile, SpanMode, FileException;
 import std.algorithm : sort;
 import std.string : split;
 import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes;
@@ -10,6 +10,8 @@ import vibe.core.core : runApplication;
 import std.stdio;
 
 immutable scriptDirectory = "scripts";
+
+string[string] scripts; // List of available scripts.
 
 //XXX
 //There must be a built in way of doing this?!
@@ -39,7 +41,7 @@ string[string] getScripts(string directory)
     {
         if (isFile(file))
         {
-            scripts[file.split("/")[$ - 1]] = file;
+            scripts[file.split("/")[$ - 1].split(".")[0]] = file;
             continue;
         }
         else if (isDir(file))
@@ -61,7 +63,14 @@ string[string] getScripts(string directory)
 
 string findScriptPath(string scriptname)
 {
-    return getScripts(scriptDirectory)[scriptname];
+    if (scriptname in scripts)
+        return scripts[scriptname.split(".")[0]];
+    else
+        scripts = getScripts(scriptDirectory);
+    if (scriptname in scripts)
+        return scripts[scriptname.split(".")[0]];
+    else
+        throw new FileException("No such file");
 }
 
 void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
