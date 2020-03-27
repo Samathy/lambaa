@@ -7,6 +7,7 @@ import vibe.http.server;
 import vibe.http.fileserver;
 import vibe.http.router;
 import vibe.core.core : runApplication;
+import vibe.data.json;
 import std.stdio;
 
 immutable scriptDirectory = "scripts";
@@ -109,8 +110,20 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     /* We should pass the input to the script in an expected form. Json, perhaps. */
     if (req.method.POST)
     {
-        writeln(req.queryString); // This gives us query variables, which should be passed in.
-        pipes.stdin.write(req.queryString);
+        Json input = Json.emptyObject();
+        input["requestMethod"] = req.method;
+        input["tls"] = req.tls;
+        input["headers"] = serializeToJson(req.headers);
+        input["httpVersion"] = req.httpVersion;
+        input["peer"] = req.peer;
+        input["files"] = serializeToJson(req.files);
+        input["username"] = req.username;
+        input["password"] = req.password;
+        input["query"] = serializeToJson(req.query);
+        input["contentType"] = req.contentType;
+        input["json"] = req.json;
+
+        pipes.stdin.write(input.toString());
     }
 
     //These two might be broken atm, they only seem to be storing the first line of output.
