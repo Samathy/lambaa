@@ -29,6 +29,12 @@ string stringArrayToString(string[] input)
     return output;
 }
 
+unittest
+{
+    string[] s = ["hello", " world", " this", " is", " lambbaa"];
+    assert ( stringArrayToString(s) == "hello world this is lambbaa");
+}
+
 string[string] getScripts(string directory)
 {
     //TODO scriptname should be the name of the script minus file extensions.
