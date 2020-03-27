@@ -2,7 +2,7 @@ import std.stdio;
 import std.file : dirEntries, isDir, isFile, SpanMode;
 import std.algorithm : sort;
 import std.string : split;
-import std.process : pipeProcess, Redirect, wait;
+import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes;
 import vibe.http.server;
 import vibe.http.fileserver;
 import vibe.http.router;
@@ -69,15 +69,29 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     //TODO switch writelns to debugs
 
+    //There might not be a scriptname if the request is to /
     auto scriptname = req.requestPath.toString()[1 .. $];
 
     writeln("Running ", scriptname);
 
     auto scriptPath = findScriptPath(scriptname);
+    //This can be nothing.
 
     //This should handle the exception when a file is not marked executable, with a 404 response.
     // std.process.ProcessException@std/process.d(375): Not an executable file: scripts/not_executable
-    auto pipes = pipeProcess(scriptPath, Redirect.stdin | Redirect.stdout | Redirect.stderr);
+
+    ProcessPipes pipes;
+    try
+    {
+        pipes = pipeProcess(scriptPath, Redirect.stdin | Redirect.stdout | Redirect.stderr);
+    }
+    catch (ProcessException)
+    {
+        writeln("Could not run script ", scriptname);
+        res.statusCode = 404;
+        return;
+    }
+
     scope (exit)
         wait(pipes.pid);
 
