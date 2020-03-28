@@ -15,6 +15,18 @@ immutable scriptDirectory = "scripts";
 
 string[string] scripts; // List of available scripts.
 
+string[] jsonStandardOutputFields = [
+    "writeBody", "contentType", "statusCode", "output"
+];
+string[] jsonErrorOutputFields = ["error", "statusCode"];
+
+enum jsonOutputType
+{
+    OK = 1,
+    ERR = 2,
+    INVALID = 3
+}
+
 string[string] getScripts(string directory)
 {
     string[string] scripts;
@@ -53,6 +65,77 @@ string findScriptPath(string scriptname)
         return scripts[scriptname.split(".")[0]];
     else
         throw new FileException("No such file");
+}
+
+int validateJsonOutput(Json output)
+{
+    /* This currently only checks that fields exist, 
+    not that they contain the right datatypes. */
+
+    bool isStandard = true;
+    foreach (field; jsonStandardOutputFields)
+    {
+        if (field !in output)
+        {
+            isStandard = false;
+            break;
+        }
+    }
+
+    if (isStandard)
+    {
+        return jsonOutputType.OK;
+    }
+
+    foreach (field; jsonErrorOutputFields)
+    {
+        if (field !in output)
+        {
+            return jsonOutputType.INVALID;
+        }
+    }
+
+    return jsonOutputType.ERR;
+
+}
+
+unittest
+{
+    Json j = Json.emptyObject();
+    j["writeBody"] = "";
+    j["contentType"] = "";
+    j["statusCode"] = 0;
+    j["output"] = "";
+
+    assert(validateJsonOutput(j) == jsonOutputType.OK);
+
+    j = Json.emptyObject();
+    j["error"] = "";
+    j["statusCode"] = 0;
+
+    assert(validateJsonOutput(j) == jsonOutputType.ERR);
+
+    j = Json.emptyObject();
+    j["statusCode"] = 0;
+
+    assert(validateJsonOutput(j) == jsonOutputType.INVALID);
+
+    j = Json.emptyObject();
+    j["writeBody"] = "";
+    j["contentType"] = "";
+    j["output"] = "";
+
+    assert(validateJsonOutput(j) == jsonOutputType.INVALID);
+
+    j = Json.emptyObject();
+    j["writeBody"] = "";
+    j["contentType"] = "";
+    j["statusCode"] = 0;
+    j["output"] = "";
+    j["error"] = "";
+
+    assert(validateJsonOutput(j) == jsonOutputType.OK);
+
 }
 
 void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
@@ -119,7 +202,6 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
         pipes.stdin.write(input.toString());
     }
 
-    //These two might be broken atm, they only seem to be storing the first line of output.
     string output;
     foreach (line; pipes.stdout.byLine)
         output ~= line.idup;
@@ -128,45 +210,63 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     foreach (line; pipes.stdout.byLine)
         output ~= line.idup;
 
-    //We need to have some handling here if the script has no output, 
-    //or has only error output.
-
-    //if the script has only error output. 
-    //Send an internal sever error, and log the output.
-
-    //We need to validate that the output json contains the data we expect it too.
-
     Json jsonOutput = Json.emptyObject();
 
     if (output.empty)
     {
-        jsonOutput["statusCode"] = HTTPStatus.internalServerError;
-        jsonOutput["writeBody"] = false; //XXX Remove when the below is re-ordered
+        res.statusCode = HTTPStatus.internalServerError;
+        res.statusPhrase = httpStatusText(res.statusCode);
+        res.writeBody(res.statusPhrase);
+        return;
     }
     else
         jsonOutput = parseJsonString(output);
 
-    /* This should really be checking the status code _first_ rather than 
-    relying on writeBody to indicate if an error occured. */
-    if (jsonOutput["writeBody"].get!bool == true)
-    {
-        //What happens if the output is itself a json object?
-        res.writeBody(jsonOutput["output"].get!string, jsonOutput["contentType"].get!string);
-    }
-    else
-    {
-        if ("statusCode" in jsonOutput)
-            res.statusCode = jsonOutput["statusCode"].get!int;
-        else
-            res.statusCode = HTTPStatus.internalServerError;
+    int jsonValidationResult = validateJsonOutput(jsonOutput);
+    writeln("Json validation result:", jsonValidationResult);
 
-        if ("error" in jsonOutput)
+    /* Some http statuses don't require a body. Some statuses do.
+       e.g the errors still require a body.
+       We need to do some checking of the returned statusCode
+       so that we can send a body, or not as required */
+    if (jsonValidationResult == jsonOutputType.ERR)
+    {
+        res.statusCode = jsonOutput["statusCode"].get!int;
+
+        if (!jsonOutput["error"].get!string.empty)
             res.writeBody(jsonOutput["error"].get!string);
         else
             res.statusPhrase = httpStatusText(res.statusCode);
+
         res.writeBody(res.statusPhrase);
         writeln(res.statusCode);
         writeln(res.statusPhrase);
+
+    }
+    else if (jsonValidationResult == jsonOutputType.OK)
+    {
+        if (jsonOutput["writeBody"].get!bool == true)
+        {
+            //What happens if the output is itself a json object?
+            res.writeBody(jsonOutput["output"].get!string, jsonOutput["contentType"].get!string);
+            res.statusCode = jsonOutput["statusCode"].get!int;
+            res.statusPhrase = httpStatusText(res.statusCode);
+        }
+        else
+        {
+            res.statusCode = jsonOutput["statusCode"].get!int;
+            res.statusPhrase = httpStatusText(res.statusCode);
+            res.writeBody(res.statusPhrase);
+        }
+
+    }
+    else if (jsonValidationResult == jsonOutputType.INVALID)
+    {
+        res.statusCode = HTTPStatus.internalServerError;
+        res.statusPhrase = httpStatusText(res.statusCode);
+        res.writeBody(res.statusPhrase);
+        return;
+
     }
 
     return;
