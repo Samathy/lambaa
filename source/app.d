@@ -218,9 +218,9 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
         writeln(format("Script %s outputted an error", scriptname));
         if (err.length > 0)
         {
-            string errorLogFile = logDirectory ~"/" ~ scriptname;
+            string errorLogFile = logDirectory ~ "/" ~ scriptname;
             auto log = File(errorLogFile, "a");
-            log.write(format("[%s] %s \n",req.timeCreated.toString(), err));
+            log.write(format("[%s] %s \n", req.timeCreated.toString(), err));
             log.write(format(req.toString()));
             log.close();
         }
@@ -254,10 +254,44 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     {
         if (jsonOutput["writeBody"].get!bool == true)
         {
-            //What happens if the output is itself a json object?
-            res.writeBody(jsonOutput["output"].get!string, jsonOutput["contentType"].get!string);
-            res.statusCode = jsonOutput["statusCode"].get!int;
-            res.statusPhrase = httpStatusText(res.statusCode);
+            try
+            {
+                if (jsonOutput["contentType"] == "application/json")
+                {
+                    jsonOutput["output"].toString();
+                    res.writeBody(jsonOutput["output"].toString(),
+                            jsonOutput["contentType"].get!string);
+                }
+                else
+                {
+                    res.writeBody(jsonOutput["output"].get!string,
+                            jsonOutput["contentType"].get!string);
+                }
+
+                res.statusCode = jsonOutput["statusCode"].get!int;
+                res.statusPhrase = httpStatusText(res.statusCode);
+            }
+            catch (JSONException e)
+            {
+                writeln("Caught Json Exception while writing response.\n",
+                        "This normally means that the script sent ",
+                        "badly formed json back to the lambaa server.");
+                writeln(format("\"%s\"", e.message));
+                res.statusCode = HTTPStatus.internalServerError;
+                res.statusPhrase = httpStatusText(res.statusCode);
+                res.writeBody(res.statusPhrase);
+                return;
+            }
+            catch (Throwable e)
+            {
+                writeln("Caught exception while writing response");
+                writeln(e.message);
+                res.statusCode = HTTPStatus.internalServerError;
+                res.statusPhrase = httpStatusText(res.statusCode);
+                res.writeBody(res.statusPhrase);
+                return;
+            }
+
         }
         else
         {
