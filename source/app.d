@@ -1,6 +1,7 @@
 import std.stdio;
 import std.file : dirEntries, isDir, isFile, SpanMode, FileException;
 import std.algorithm : sort;
+import std.algorithm.searching : canFind;
 import std.string : split, format;
 import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes;
 import std.range : empty;
@@ -13,6 +14,8 @@ import vibe.data.json;
 
 immutable string scriptDirectory = "scripts";
 immutable string logDirectory = "logs";
+
+immutable int[] noBodyStatusCodes = [100, 101, 102, 103, 201, 204, 205];
 
 string[string] scripts; // List of available scripts.
 
@@ -242,12 +245,19 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     {
         res.statusCode = jsonOutput["statusCode"].get!int;
 
-        if (!jsonOutput["error"].get!string.empty)
-            res.writeBody(jsonOutput["error"].get!string);
-        else
-            res.statusPhrase = httpStatusText(res.statusCode);
+        if (!canFind(noBodyStatusCodes, res.statusCode))
+        {
+            if (!jsonOutput["error"].get!string.empty)
+                res.writeBody(jsonOutput["error"].get!string);
+            else
+                res.statusPhrase = httpStatusText(res.statusCode);
 
-        res.writeBody(res.statusPhrase);
+            res.writeBody(res.statusPhrase);
+        }
+        else
+        {
+            res.writeVoidBody();
+        }
 
     }
     else if (jsonValidationResult == jsonOutputType.OK)
