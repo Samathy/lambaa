@@ -60,8 +60,14 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     //TODO switch writelns to debugs
 
-    /* There might not be a scriptname if the request is to /
-    In which case, this will go out-of-bounds */
+    if ( req.requestPath.toString() == "/" )
+    {
+        res.statusCode = HTTPStatus.notFound;
+        res.statusPhrase = httpStatusText(res.statusCode);
+        res.writeBody(res.statusPhrase);
+        return;
+
+    }
     auto scriptname = req.requestPath.toString()[1 .. $];
 
     writeln("Running ", scriptname);
