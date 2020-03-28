@@ -6,6 +6,7 @@ import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes
 import vibe.http.server;
 import vibe.http.fileserver;
 import vibe.http.router;
+import vibe.http.status : HTTPStatus, httpStatusText;
 import vibe.core.core : runApplication;
 import vibe.data.json;
 import std.stdio;
@@ -122,9 +123,29 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     writeln(output);
 
-    //TODO this should be using a json object, rather than handcoded json.
-    res.writeBody("{\"output\":\"" ~ output ~ "\", \"error\":\"" ~ err ~ "\"}",
-            "application/json");
+    Json jsonOutput = Json.emptyObject();
+    jsonOutput = parseJsonString(output);
+
+    if (jsonOutput["writeBody"].get!bool == true)
+    {
+        res.writeBody(jsonOutput["output"].get!string, jsonOutput["contentType"].get!string);
+    }
+    else
+    {
+        if ("statusCode" in jsonOutput)
+            res.statusCode = jsonOutput["statusCode"].get!int;
+        else
+            res.statusCode = HTTPStatus.internalServerError;
+
+        if ("error" in jsonOutput)
+            res.writeBody(jsonOutput["error"].get!string);
+        else
+            res.statusPhrase = httpStatusText(res.statusCode);
+        res.writeBody(res.statusPhrase);
+        writeln(res.statusCode);
+        writeln(res.statusPhrase);
+    }
+
     return;
 }
 
