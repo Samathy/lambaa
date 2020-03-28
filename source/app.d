@@ -14,27 +14,6 @@ immutable scriptDirectory = "scripts";
 
 string[string] scripts; // List of available scripts.
 
-//XXX
-//There must be a built in way of doing this?!
-//This could be a templated function.
-string stringArrayToString(string[] input)
-{
-    string output;
-
-    foreach (string sIn; input)
-    {
-        output ~= sIn;
-    }
-
-    return output;
-}
-
-unittest
-{
-    string[] s = ["hello", " world", " this", " is", " lambbaa"];
-    assert ( stringArrayToString(s) == "hello world this is lambbaa");
-}
-
 string[string] getScripts(string directory)
 {
     //TODO scriptname should be the name of the script minus file extensions.
@@ -133,22 +112,18 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     }
 
     //These two might be broken atm, they only seem to be storing the first line of output.
-    string[] output;
+    string output;
     foreach (line; pipes.stdout.byLine)
         output ~= line.idup;
 
-    string[] err;
+    string err;
     foreach (line; pipes.stdout.byLine)
         output ~= line.idup;
-
-    string singleOutput = stringArrayToString(output);
-    string singleError = stringArrayToString(err);
 
     writeln(output);
-    writeln(singleOutput);
 
     //TODO this should be using a json object, rather than handcoded json.
-    res.writeBody("{\"output\":\"" ~ singleOutput ~ "\", \"error\":\"" ~ singleError ~ "\"}",
+    res.writeBody("{\"output\":\"" ~ output ~ "\", \"error\":\"" ~ err ~ "\"}",
             "application/json");
     return;
 }
