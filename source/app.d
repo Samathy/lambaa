@@ -1,7 +1,7 @@
 import std.stdio;
 import std.file : dirEntries, isDir, isFile, SpanMode, FileException;
 import std.algorithm : sort;
-import std.string : split;
+import std.string : split, format;
 import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes;
 import std.range : empty;
 import vibe.http.server;
@@ -11,7 +11,8 @@ import vibe.http.status : HTTPStatus, httpStatusText;
 import vibe.core.core : runApplication;
 import vibe.data.json;
 
-immutable scriptDirectory = "scripts";
+immutable string scriptDirectory = "scripts";
+immutable string logDirectory = "logs";
 
 string[string] scripts; // List of available scripts.
 
@@ -207,13 +208,22 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
         output ~= line.idup;
 
     string err;
-    foreach (line; pipes.stdout.byLine)
-        output ~= line.idup;
+    foreach (line; pipes.stderr.byLine)
+        err ~= line.idup;
 
     Json jsonOutput = Json.emptyObject();
 
-    if (output.empty)
+    if (output.empty || err.length > 0)
     {
+        writeln(format("Script %s outputted an error", scriptname));
+        if (err.length > 0)
+        {
+            string errorLogFile = logDirectory ~"/" ~ scriptname;
+            auto log = File(errorLogFile, "a");
+            log.write(format("[%s] %s \n",req.timeCreated.toString(), err));
+            log.write(format(req.toString()));
+            log.close();
+        }
         res.statusCode = HTTPStatus.internalServerError;
         res.statusPhrase = httpStatusText(res.statusCode);
         res.writeBody(res.statusPhrase);
@@ -223,7 +233,6 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
         jsonOutput = parseJsonString(output);
 
     int jsonValidationResult = validateJsonOutput(jsonOutput);
-    writeln("Json validation result:", jsonValidationResult);
 
     /* Some http statuses don't require a body. Some statuses do.
        e.g the errors still require a body.
@@ -239,8 +248,6 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
             res.statusPhrase = httpStatusText(res.statusCode);
 
         res.writeBody(res.statusPhrase);
-        writeln(res.statusCode);
-        writeln(res.statusPhrase);
 
     }
     else if (jsonValidationResult == jsonOutputType.OK)
