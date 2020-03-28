@@ -3,6 +3,7 @@ import std.file : dirEntries, isDir, isFile, SpanMode, FileException;
 import std.algorithm : sort;
 import std.string : split;
 import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes;
+import std.range : empty;
 import vibe.http.server;
 import vibe.http.fileserver;
 import vibe.http.router;
@@ -122,8 +123,14 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     //We need to validate that the output json contains the data we expect it too.
 
     Json jsonOutput = Json.emptyObject();
-    jsonOutput = parseJsonString(output);
 
+    if (output.empty)
+    {
+        jsonOutput["statusCode"] = HTTPStatus.internalServerError;
+        jsonOutput["writeBody"] = false; //XXX Remove when the below is re-ordered
+    }
+    else
+        jsonOutput = parseJsonString(output);
 
     /* This should really be checking the status code _first_ rather than 
     relying on writeBody to indicate if an error occured. */
