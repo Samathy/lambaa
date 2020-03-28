@@ -9,7 +9,6 @@ import vibe.http.router;
 import vibe.http.status : HTTPStatus, httpStatusText;
 import vibe.core.core : runApplication;
 import vibe.data.json;
-import std.stdio;
 
 immutable scriptDirectory = "scripts";
 
@@ -17,11 +16,6 @@ string[string] scripts; // List of available scripts.
 
 string[string] getScripts(string directory)
 {
-    //TODO scriptname should be the name of the script minus file extensions.
-
-    //The list of scripts should be optionally cached
-    //and only updated if a script name is not found
-    //when requested.
     string[string] scripts;
 
     foreach (string file; dirEntries(directory, SpanMode.breadth))
@@ -65,16 +59,15 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     //TODO switch writelns to debugs
 
-    //There might not be a scriptname if the request is to /
+    /* There might not be a scriptname if the request is to /
+    In which case, this will go out-of-bounds */
     auto scriptname = req.requestPath.toString()[1 .. $];
 
     writeln("Running ", scriptname);
 
     auto scriptPath = findScriptPath(scriptname);
-    //This can be nothing.
-
-    //This should handle the exception when a file is not marked executable, with a 404 response.
-    // std.process.ProcessException@std/process.d(375): Not an executable file: scripts/not_executable
+    /*This can be nothing. We need to handle if the script isnt found a bit better.
+      than just catching the exception. */
 
     ProcessPipes pipes;
     try
@@ -93,7 +86,6 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     /* Script input should be optionally cached, checked against previous inputs, 
       and the expected output given if matches found. */
-    /* We should pass the input to the script in an expected form. Json, perhaps. */
     if (req.method.POST)
     {
         Json input = Json.emptyObject();
@@ -121,13 +113,23 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     foreach (line; pipes.stdout.byLine)
         output ~= line.idup;
 
-    writeln(output);
+    //We need to have some handling here if the script has no output, 
+    //or has only error output.
+
+    //if the script has only error output. 
+    //Send an internal sever error, and log the output.
+
+    //We need to validate that the output json contains the data we expect it too.
 
     Json jsonOutput = Json.emptyObject();
     jsonOutput = parseJsonString(output);
 
+
+    /* This should really be checking the status code _first_ rather than 
+    relying on writeBody to indicate if an error occured. */
     if (jsonOutput["writeBody"].get!bool == true)
     {
+        //What happens if the output is itself a json object?
         res.writeBody(jsonOutput["output"].get!string, jsonOutput["contentType"].get!string);
     }
     else
