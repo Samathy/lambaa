@@ -57,10 +57,9 @@ string findScriptPath(string scriptname)
 
 void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
-
     //TODO switch writelns to debugs
 
-    if ( req.requestPath.toString() == "/" )
+    if (req.requestPath.toString() == "/")
     {
         res.statusCode = HTTPStatus.notFound;
         res.statusPhrase = httpStatusText(res.statusCode);
@@ -72,9 +71,16 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     writeln("Running ", scriptname);
 
-    auto scriptPath = findScriptPath(scriptname);
-    /*This can be nothing. We need to handle if the script isnt found a bit better.
-      than just catching the exception. */
+    string scriptPath;
+    try
+        scriptPath = findScriptPath(scriptname);
+    catch (FileException)
+    {
+        res.statusCode = HTTPStatus.notFound;
+        res.statusPhrase = httpStatusText(res.statusCode);
+        res.writeBody(res.statusPhrase);
+        return;
+    }
 
     ProcessPipes pipes;
     try
@@ -84,7 +90,9 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     catch (ProcessException)
     {
         writeln("Could not run script ", scriptname);
-        res.statusCode = 404;
+        res.statusCode = HTTPStatus.notFound;
+        res.statusPhrase = httpStatusText(res.statusCode);
+        res.writeBody(res.statusPhrase);
         return;
     }
 
