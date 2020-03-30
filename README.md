@@ -59,3 +59,10 @@ Scripts must be marked executable, but can be in any language.
 
 Scripts placed in nested directories within the regular scripts directory is not supported at the moment.
 
+## Running tests
+
+Tests can be ran by moving into the tests/ directory and running 'test_runner.py'.
+'test_runner.py' supports "SUPPRESS" and "STOPONFAIL" options.
+
+    ./test_runner.py SUPPRESS STOPONFAIL
+
