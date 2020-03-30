@@ -1,12 +1,13 @@
 #!/usr/bin/env python
+from contextlib import contextmanager
 from pprint import pp
-from subprocess import check_call, Popen
+from subprocess import check_call, Popen, DEVNULL
+from time import sleep
 import json
 import os
 import pathlib
 import requests
-from contextlib import contextmanager
-from time import sleep
+import sys
 
 class bcolors:
     HEADER = '\033[95m'
@@ -19,23 +20,24 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def lambaa():
+    if ( "SUPPRESS" in sys.argv ):
+        return Popen("./lambaa", cwd="../", stderr=DEVNULL) # We should check that it runs okay, actually.
     return Popen("./lambaa", cwd="../") # We should check that it runs okay, actually.
 
 @contextmanager
 def test_setup(f, fname):
     try:
-        check_call(["cp", f, "../scripts/"+fname])
+        check_call(["cp", "-r", f, "../scripts/"+fname])
         yield
     finally:
-        print("Would remove "+"../scripts/"+fname)
-#        check_call(["rm", "../scripts/"+fname])
+        check_call(["rm", "-r", "../scripts/"+fname])
 
 @contextmanager
 def lambaa_setup():
     pid = None
     try:
         pid = lambaa()
-        yield
+        yield pid
     finally:
         pid.kill()
 
@@ -52,7 +54,13 @@ def run_test(test):
 
         with test_setup(pathlib.Path(test,testini_json["file_name"]), testini_json["file_name"]):
 
-            r = requests.get("http://127.0.0.1:8080/"+testini_json["test_name"])
+            try:
+                r = requests.get("http://127.0.0.1:8080/"+testini_json["test_name"])
+            except requests.exceptions.ConnectionError:
+                print ( "Test: " + bcolors.BOLD + test + bcolors.ENDC + " " + bcolors.FAIL + "FAILED" + bcolors.ENDC )
+                results[testini_json["file_name"]] = "FAILED"
+                return
+
 
             print("Status Code:" + str(r.status_code))
             print("Body:" + r.text)
@@ -65,6 +73,9 @@ def run_test(test):
             except AssertionError:
                 print ( "Test: " + bcolors.BOLD + test + bcolors.ENDC + " " + bcolors.FAIL + "FAILED" + bcolors.ENDC )
                 results[testini_json["file_name"]] = "FAILED"
+                if ( "STOPONFAIL" in sys.argv ):
+                    exit(1)
+
 
     print ( "Test: " + bcolors.BOLD + test + bcolors.ENDC + " " + bcolors.OKGREEN + "PASSED" + bcolors.ENDC    )
     return results
@@ -76,7 +87,7 @@ def print_results(results):
 def execute_tests():
     test_directories = os.listdir(".")
     results = dict()
-    with lambaa_setup():
+    with lambaa_setup() as l:
         sleep(2)
         for test in test_directories:
             if test == "test_runner.py":
