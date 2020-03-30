@@ -1,5 +1,5 @@
 import std.stdio;
-import std.file : dirEntries, isDir, isFile, SpanMode, FileException;
+import std.file : dirEntries, isDir, isFile, isSymlink, SpanMode, FileException;
 import std.algorithm : sort;
 import std.algorithm.searching : canFind;
 import std.string : split, format;
@@ -33,15 +33,14 @@ enum jsonOutputType
 
 string[string] getScripts(string directory)
 {
-    string[string] scripts;
-
     foreach (string file; dirEntries(directory, SpanMode.breadth))
     {
-        if (isFile(file))
+        if (isFile(file) || isSymlink(file))
         {
             scripts[file.split("/")[$ - 1].split(".")[0]] = file;
             continue;
         }
+
         else if (isDir(file))
         {
             auto scriptsInDirectory = getScripts(file);
@@ -62,7 +61,9 @@ string[string] getScripts(string directory)
 string findScriptPath(string scriptname)
 {
     if (scriptname in scripts)
+    {
         return scripts[scriptname.split(".")[0]];
+    }
     else
         scripts = getScripts(scriptDirectory);
     if (scriptname in scripts)
@@ -160,9 +161,12 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
     string scriptPath;
     try
+    {
         scriptPath = findScriptPath(scriptname);
+    }
     catch (FileException)
     {
+        writeln("No scripts called " ~ scriptname);
         res.statusCode = HTTPStatus.notFound;
         res.statusPhrase = httpStatusText(res.statusCode);
         res.writeBody(res.statusPhrase);
