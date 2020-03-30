@@ -45,7 +45,7 @@ string[string] getScripts(string directory)
         {
             auto scriptsInDirectory = getScripts(file);
 
-            foreach (string scriptname; scriptsInDirectory)
+            foreach (string scriptname; scriptsInDirectory.keys)
             {
                 scripts[scriptname] = scriptsInDirectory[scriptname];
             }
