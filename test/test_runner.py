@@ -50,6 +50,11 @@ def run_test(test):
     with open(pathlib.Path(test,"test.ini"), "r") as testini:
         testini_json = json.loads(testini.read())
 
+        if "IGNORE" in testini_json:
+            results[testini_json["file_name"]] = "IGNORED"
+            return results
+
+
         expected_result = (testini_json["result"],testini_json["body"])
 
         with test_setup(pathlib.Path(test,testini_json["file_name"]), testini_json["file_name"]):
