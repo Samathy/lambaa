@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from contextlib import contextmanager
 from subprocess import check_call, Popen, DEVNULL
 from time import sleep
