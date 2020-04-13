@@ -15,11 +15,13 @@ jobs:
     - uses: mihails-strasuns/setup-dlang@v0
     - name: Build
       run: dub build
-    - name: Test
+    - name: Dub Test
       run: dub test
-      run: cd test
-      run: test_runner.py
-      run: cd ../
+    - name: Integration Tests
+      run: |
+        cd test
+        ./test_runner.py
+        cd ../
     - name: Make-Release-Archive
       run: bash tar-files.sh
     - name: Release
