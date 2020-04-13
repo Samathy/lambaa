@@ -21,7 +21,7 @@ class bcolors:
 
 def lambaa():
     if ( "SUPPRESS" in sys.argv ):
-        return Popen("./lambaa", cwd="../", stderr=DEVNULL) # We should check that it runs okay, actually.
+        return Popen("./lambaa", cwd="../", stdout=DEVNULL, stderr=DEVNULL) # We should check that it runs okay, actually.
     return Popen("./lambaa", cwd="../") # We should check that it runs okay, actually.
 
 @contextmanager
@@ -59,7 +59,9 @@ def run_test(test):
             except requests.exceptions.ConnectionError:
                 print ( "Test: " + bcolors.BOLD + test + bcolors.ENDC + " " + bcolors.FAIL + "FAILED" + bcolors.ENDC )
                 results[testini_json["file_name"]] = "FAILED"
-                return
+                if ( "STOPONFAIL" in sys.argv ):
+                    exit(1)
+                return results
 
 
             print("Status Code:" + str(r.status_code))
@@ -75,6 +77,7 @@ def run_test(test):
                 results[testini_json["file_name"]] = "FAILED"
                 if ( "STOPONFAIL" in sys.argv ):
                     exit(1)
+                return results
 
 
     print ( "Test: " + bcolors.BOLD + test + bcolors.ENDC + " " + bcolors.OKGREEN + "PASSED" + bcolors.ENDC    )
@@ -95,6 +98,9 @@ def execute_tests():
             results[test] = run_test(test)
     print("\n\n")
     pp(results)
+    for name in results:
+        if "FAILED" in results[name].values():
+            exit(1)
 
 
 if __name__ == "__main__":
