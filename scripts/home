@@ -1,0 +1,8 @@
+#!/usr/bin/env python
+
+import json
+
+reply = {"writeBody":True, "contentType":"text/html", "statusCode":200,
+        "output":"<h1>Welcome to lambaa</h1><br><p>Lambaa is a simple script runner, written in Dlang by <a href=\"https://sbarratt.co.uk\"> Samathy</a>.</p><a href=\"https://github.com/samathy/lambaa\">GitHub</a>"}
+
+print(json.dumps(reply))

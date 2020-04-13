@@ -149,30 +149,39 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
     //TODO switch writelns to debugs
 
-    if (req.requestPath.toString() == "/")
-    {
-        res.statusCode = HTTPStatus.notFound;
-        res.statusPhrase = httpStatusText(res.statusCode);
-        res.writeBody(res.statusPhrase);
-        return;
-
-    }
+    string scriptPath;
     auto scriptname = req.requestPath.toString()[1 .. $];
 
     writeln("Running ", scriptname);
 
-    string scriptPath;
-    try
+    if (req.requestPath.toString() == "/")
     {
-        scriptPath = findScriptPath(scriptname);
+        try{
+            scriptPath = findScriptPath("home");
+        }
+        catch (FileException)
+        {
+            res.statusCode = HTTPStatus.notFound;
+            res.statusPhrase = httpStatusText(res.statusCode);
+            res.writeBody(res.statusPhrase);
+            return;
+        }
+
     }
-    catch (FileException)
+    else
     {
-        writeln("No scripts called " ~ scriptname);
-        res.statusCode = HTTPStatus.notFound;
-        res.statusPhrase = httpStatusText(res.statusCode);
-        res.writeBody(res.statusPhrase);
-        return;
+        try
+        {
+            scriptPath = findScriptPath(scriptname);
+        }
+        catch (FileException)
+        {
+            writeln("No scripts called " ~ scriptname);
+            res.statusCode = HTTPStatus.notFound;
+            res.statusPhrase = httpStatusText(res.statusCode);
+            res.writeBody(res.statusPhrase);
+            return;
+        }
     }
 
     ProcessPipes pipes;
