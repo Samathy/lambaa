@@ -1,10 +1,11 @@
-import std.stdio;
-import std.file : dirEntries, isDir, isFile, isSymlink, SpanMode, FileException;
 import std.algorithm : sort;
 import std.algorithm.searching : canFind;
-import std.string : split, format;
+import std.file : dirEntries, isDir, isFile, isSymlink, SpanMode, FileException;
+import std.getopt;
 import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes;
 import std.range : empty;
+import std.stdio;
+import std.string : split, format;
 import vibe.http.server;
 import vibe.http.fileserver;
 import vibe.http.router;
