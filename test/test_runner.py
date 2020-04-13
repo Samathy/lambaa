@@ -20,8 +20,8 @@ class bcolors:
 
 def lambaa():
     if ( "SUPPRESS" in sys.argv ):
-        return Popen("./lambaa", cwd="../", stdout=DEVNULL, stderr=DEVNULL) # We should check that it runs okay, actually.
-    return Popen("./lambaa", cwd="../") # We should check that it runs okay, actually.
+        return Popen(["./lambaa --port=8080"], cwd="../", stdout=DEVNULL, stderr=DEVNULL) # We should check that it runs okay, actually.
+    return Popen(["./lambaa", "--port=8080"], cwd="../") # We should check that it runs okay, actually.
 
 @contextmanager
 def test_setup(f, fname):

@@ -13,10 +13,11 @@ import vibe.http.router;
 import vibe.http.status : HTTPStatus, httpStatusText;
 import vibe.core.core : runApplication;
 import vibe.data.json;
+import vibe.core.args: setCommandLineArgs;
 
 string scriptDirectory = "scripts";
 string logDirectory = "logs";
-ushort port = 8080;
+ushort port = 8686;
 
 immutable int[] noBodyStatusCodes = [100, 101, 102, 103, 201, 204, 205];
 
@@ -353,13 +354,13 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     return;
 }
 
-int main(string[] argv)
+int main(string[] args)
 {
     writeln(scriptDirectory);
     writeln(port);
     writeln(logDirectory);
 
-    auto help = getopt(argv, "port", &port, "script-directory",
+    auto help = getopt(args, "port", &port, "script-directory",
             &scriptDirectory, "log-directory", &logDirectory);
 
     if (help.helpWanted)
@@ -369,6 +370,10 @@ int main(string[] argv)
 
     writeln("Looking for scripts in: " ~ scriptDirectory);
     writeln("Logging to: " ~ logDirectory);
+    
+    setCommandLineArgs = args;
+
+
 
     auto settings = new HTTPServerSettings;
     settings.port = port;
