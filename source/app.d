@@ -6,6 +6,7 @@ import std.process : pipeProcess, Redirect, wait, ProcessException, ProcessPipes
 import std.range : empty;
 import std.stdio;
 import std.string : split, format;
+import std.datetime: Clock, SysTime;
 import vibe.http.server;
 import vibe.http.fileserver;
 import vibe.http.router;
@@ -148,6 +149,19 @@ unittest
 void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
     //TODO switch writelns to debugs
+
+    writeln(format("[%s] ", req.timeCreated.toString()));
+    writeln(format(req.toString()));
+    writeln(format("Peer: %s", req.peer));
+
+    void endLog()
+    {
+        writeln(format("[%s] Request for %s complete ", Clock.currTime.toUTC(), req.peer));
+    }
+
+    scope(exit)
+        endLog();
+
 
     string scriptPath;
     auto scriptname = req.requestPath.toString()[1 .. $];
