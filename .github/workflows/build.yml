@@ -14,12 +14,13 @@ jobs:
     - uses: actions/checkout@v1
     - uses: mihails-strasuns/setup-dlang@v0
     - name: Build
-      run: dub build
-    - name: Test
-      run: dub test
-      run: cd test
-      run: test_runner.py
-      run: cd ../
+      run: dub build --force
+    - name: Integration Tests
+      run: |
+        pip install requests pprint
+        cd test
+        ./test_runner.py
+        cd ../
     - name: Make-Release-Archive
       run: bash tar-files.sh
     - name: Release
