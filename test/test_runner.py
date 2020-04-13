@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from contextlib import contextmanager
-from pprint import pp
 from subprocess import check_call, Popen, DEVNULL
 from time import sleep
 import json
@@ -50,7 +49,7 @@ def run_test(test):
     with open(pathlib.Path(test,"test.ini"), "r") as testini:
         testini_json = json.loads(testini.read())
 
-        if "IGNORE" in testini_json:
+        if "IGNORE" in testini_json.keys():
             results[testini_json["file_name"]] = "IGNORED"
             return results
 
@@ -89,7 +88,7 @@ def run_test(test):
     return results
 
 def print_results(results):
-    pp(results)
+    print(results)
     
     
 def execute_tests():
@@ -102,7 +101,7 @@ def execute_tests():
                 break
             results[test] = run_test(test)
     print("\n\n")
-    pp(results)
+    print(results)
     for name in results:
         if "FAILED" in results[name].values():
             exit(1)
