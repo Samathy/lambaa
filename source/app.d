@@ -13,8 +13,9 @@ import vibe.http.status : HTTPStatus, httpStatusText;
 import vibe.core.core : runApplication;
 import vibe.data.json;
 
-immutable string scriptDirectory = "scripts";
-immutable string logDirectory = "logs";
+string scriptDirectory = "scripts";
+string logDirectory = "logs";
+ushort port = 8080;
 
 immutable int[] noBodyStatusCodes = [100, 101, 102, 103, 201, 204, 205];
 
@@ -318,6 +319,7 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     }
     else if (jsonValidationResult == jsonOutputType.INVALID)
     {
+        writeln("Script output is not valid");
         res.statusCode = HTTPStatus.internalServerError;
         res.statusPhrase = httpStatusText(res.statusCode);
         res.writeBody(res.statusPhrase);
@@ -328,11 +330,25 @@ void handler(scope HTTPServerRequest req, scope HTTPServerResponse res)
     return;
 }
 
-int main()
+int main(string[] argv)
 {
+    writeln(scriptDirectory);
+    writeln(port);
+    writeln(logDirectory);
+
+    auto help = getopt(argv, "port", &port, "script-directory",
+            &scriptDirectory, "log-directory", &logDirectory);
+
+    if (help.helpWanted)
+    {
+        defaultGetoptPrinter("lamba server", help.options);
+    }
+
+    writeln("Looking for scripts in: " ~ scriptDirectory);
+    writeln("Logging to: " ~ logDirectory);
 
     auto settings = new HTTPServerSettings;
-    settings.port = 8080;
+    settings.port = port;
     settings.bindAddresses = ["::1", "127.0.0.1"];
 
     auto router = new URLRouter;
